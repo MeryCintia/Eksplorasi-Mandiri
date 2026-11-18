@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Differensiasi</title>
+  <style>
+    body { font-family: sans-serif; margin: 16px; }
+    h1 { font-size: 20px; margin: 0 0 12px; }
+    #wrap { display: flex; gap: 24px; flex-wrap: wrap; }
+    .panel { flex: 1; min-width: 300px; }
+    .panel h2 { font-size: 16px; margin: 0 0 8px; }
+    canvas { border: 1px solid black; display: block; margin-bottom: 8px; }
+    button { margin-bottom: 8px; }
+    textarea { width: 100%; height: 320px; box-sizing: border-box; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h1>Differensiasi: the same idea, two different prompts</h1>
+  <p>Press start on each side. Red dots mark where the ball touched the border.</p>
+
+  <div id="wrap">
+    <div class="panel" id="left"></div>
+    <div class="panel" id="right"></div>
+  </div>
+
+  <script>
+    const leftText = `PROMPT 1 (my first prompt):
+Create a simple app using Vanilla JS only. Its parent is a div element with variable name cnt. It should have a canvas element and a button element. The button is toggle button showing "start" and "stop". It triggers the motion of circle in the canvas. The circle should bounce when meet the canvas border. Size of canvas is 200px x 200px.
+
+RESULT:
+The prompt did not say which direction or how fast, so the AI chose a diagonal motion: x speed = 2 and y speed = 1.5 (different on each axis).
+
+The ball needs a different amount of time to cross the width than the height, so the two rhythms do not line up. Every bounce lands on a slightly different spot, and the red dots spread along all four borders.`;
+
+    const rightText = `PROMPT 2 (my last prompt):
+Create a 200 pxl x 200 pxl canvas with Vanilla JS only. There is a small blue ball which on the center of canvas when it start. Under the canvas, there is a toogle button for start/stop option. When we click start, the ball will move regularly, and move opposite direction when it collides with the border.
+
+RESULT:
+"Move regularly" and "opposite direction" can be read as "go back and forth along one line". Here the ball moves only up and down (x speed = 0, y speed = 2).
+
+It always travels the same distance between the same two borders, so it hits only 2 points, over and over. There is only one red dot at the top and one at the bottom.
+
+THE DIFFERENCE:
+- Prompt 1 did not say the direction, so the AI picked a diagonal with unequal speeds. The hit points keep changing (about 12 seconds before the pattern repeats).
+- Prompt 2 described the motion as regular and opposite, so the AI picked a straight line. Only 2 hit points.
+
+LESSON:
+Anything you do not write in the prompt is decided by the AI. If the motion matters, say it: "moves only vertically", "moves diagonally at 45 degrees", or "different speed on each axis".`;
+
+    // Build one simulation panel
+    function createSim(parent, title, text, vx, vy) {
+      const h2 = document.createElement("h2");
+      h2.textContent = title;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = 200;
+      canvas.height = 200;
+
+      const button = document.createElement("button");
+      button.textContent = "start";
+
+      const area = document.createElement("textarea");
+      area.readOnly = true;
+      area.value = text;
+
+      parent.append(h2, canvas, button, area);
+
+      const ctx = canvas.getContext("2d");
+      const ball = { x: 100, y: 100, r: 8, vx: vx, vy: vy };
+      const hits = []; // contact points on the border
+      let running = false;
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = "red";
+        for (const p of hits) {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.fillStyle = "blue";
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      function update() {
+        ball.x += ball.vx;
+        ball.y += ball.vy;
+
+        if (ball.x - ball.r <= 0 || ball.x + ball.r >= canvas.width) {
+          ball.vx = -ball.vx;
+          hits.push({ x: ball.x < 100 ? 0 : canvas.width, y: ball.y });
+        }
+        if (ball.y - ball.r <= 0 || ball.y + ball.r >= canvas.height) {
+          ball.vy = -ball.vy;
+          hits.push({ x: ball.x, y: ball.y < 100 ? 0 : canvas.height });
+        }
+      }
+
+      function loop() {
+        if (!running) return;
+        update();
+        draw();
+        requestAnimationFrame(loop);
+      }
+
+      button.addEventListener("click", () => {
+        running = !running;
+        button.textContent = running ? "stop" : "start";
+        if (running) loop();
+      });
+
+      draw();
+    }
+
+    createSim(document.getElementById("left"), "Prompt 1: different speed on each axis", leftText, 2, 1.5);
+    createSim(document.getElementById("right"), "Prompt 2: regular back and forth", rightText, 0, 2);
+  </script>
+</body>
+</html>
